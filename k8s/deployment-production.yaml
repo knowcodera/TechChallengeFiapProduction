@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: production-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: production-api
+  template:
+    metadata:
+      labels:
+        app: production-api
+    spec:
+      containers:
+      - name: production-api
+        image: knowcodera/techchallengefiapproduction:latest
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: production-api-config
+        - secretRef:
+            name: production-api-secret

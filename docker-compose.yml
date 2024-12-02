@@ -1,0 +1,53 @@
+version: '3.9'
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_production
+    ports:
+      - "5673:5672"  # Porta para a comunicação
+      - "15673:15672"  # Interface web de gerenciamento
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  production:
+    build:
+      context: ./production  # Ajuste o contexto para apontar para a pasta "production"
+      dockerfile: Dockerfile
+    container_name: api_production
+    ports:
+      - "8580:8580"
+    environment:
+      - RabbitMQ__HostName=rabbitmq
+      - RabbitMQ__UserName=guest
+      - RabbitMQ__Password=guest
+      - DB_CONNECTION_STRING=mongodb://mongodb:27017/ProductionDB
+    depends_on:
+      - rabbitmq
+      - mongodb
+    networks:
+      - backend
+
+  # production_tests:
+  #   build:
+  #     context: ./production
+  #     dockerfile: Dockerfile.tests # Dockerfile específico para testes
+  #   container_name: production_tests
+  #   command: dotnet test --logger "console;verbosity=detailed"
+  #   depends_on:
+  #     - rabbitmq
+  #     - mongodb
+  #   networks:
+  #     - backend
+    
+  mongodb:
+    image: mongo
+    container_name: mongodb_production
+    ports:
+      - "27018:27017"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge

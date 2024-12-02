@@ -1,0 +1,16 @@
+# Base image for .NET SDK
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS test
+WORKDIR /src
+
+# Copy project files for tests and main application
+COPY ["src/ProductionApi/ProductionApi.csproj", "ProductionApi/"]
+COPY ["src/ProductionTests/ProductionTests.csproj", "ProductionTests/"]
+RUN dotnet restore "ProductionTests/ProductionTests.csproj"
+
+# Copy the entire source code
+COPY src/ ./src/
+WORKDIR "/src/ProductionTests"
+
+# Build and run tests
+RUN dotnet build "ProductionTests.csproj" -c Release
+RUN dotnet test --logger:"trx;LogFileName=test_results.trx"
