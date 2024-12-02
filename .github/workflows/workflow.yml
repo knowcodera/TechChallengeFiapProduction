@@ -1,0 +1,80 @@
+name: Build and Deploy Production API to Azure AKS
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  ACR_NAME: ${{ secrets.AZURE_ACR_NAME }}
+  RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  AKS_CLUSTER_NAME: ${{ secrets.AZURE_AKS_CLUSTER_NAME }}
+  DB_CONNECTION_STRING: ${{ secrets.PRODUCTION_DB_CONNECTION_STRING }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up .NET Core
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: '8.0.x'
+
+      # Step 3: Clean and Build Production API
+      - name: Clean Production API
+        run: dotnet clean ./production/src/ProductionApi/ProductionApi.csproj
+
+      - name: Restore dependencies for Production API
+        run: dotnet restore ./production/src/ProductionApi/ProductionApi.csproj
+
+      - name: Build Production API
+        run: dotnet build ./production/src/ProductionApi/ProductionApi.csproj --configuration Release --no-restore
+
+      # Step 4: Run Tests (Optional but Recommended)
+      - name: Run Unit Tests
+        run: dotnet test ./production/src/ProductionTests/ --logger "console;verbosity=detailed"
+
+      # Step 5: Setup Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Step 6: Login to Azure Container Registry (ACR) using Azure Credentials
+      - name: Log in to Azure Container Registry (ACR)
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.ACR_NAME }}.azurecr.io
+          username: ${{ secrets.AZURE_CLIENT_ID }}
+          password: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      # Step 7: Build and Push Docker image for Production API
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/production:latest ./production
+          docker push ${{ env.ACR_NAME }}.azurecr.io/production:latest
+
+      # Step 8: Deploy to AKS
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Get AKS Credentials
+        uses: azure/aks-set-context@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          cluster-name: ${{ env.AKS_CLUSTER_NAME }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
+
+      - name: Deploy Production API to AKS
+        run: |
+          kubectl apply -f ./k8s/deployment-production.yaml
+          kubectl apply -f ./k8s/service-production.yaml
