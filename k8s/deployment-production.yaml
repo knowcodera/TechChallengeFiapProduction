@@ -12,13 +12,10 @@ spec:
       labels:
         app: production-api
     spec:
+      imagePullSecrets:
+      - name: acr-secret
       containers:
       - name: production-api
-        image: knowcodera/techchallengefiapproduction:latest
+        image: mycontainerregistrytechchallenge.azurecr.io/production:latest
         ports:
-        - containerPort: 8080
-        envFrom:
-        - configMapRef:
-            name: production-api-config
-        - secretRef:
-            name: production-api-secret
+        - containerPort: 8680

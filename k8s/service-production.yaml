@@ -6,7 +6,8 @@ spec:
   selector:
     app: production-api
   ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8580
-  type: ClusterIP
+    - name: http
+      protocol: TCP
+      port: 8680
+      targetPort: 8680
+  type: LoadBalancer
